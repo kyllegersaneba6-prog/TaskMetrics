@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
-import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, RefreshControl, Modal, Platform, StatusBar, Dimensions, BackHandler } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, RefreshControl, Modal, Platform, StatusBar, Dimensions, BackHandler, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -16,11 +16,14 @@ import BottomSheet from "../../src/components/BottomSheet";
 import TaskFormSheet from "../../src/components/TaskFormSheet";
 import { setHighlightId } from "../../src/utils/highlightRef";
 
-function mixWithWhite(hex, intensity = 0.12) {
+function mixTint(hex, intensity = 0.12, toBlack = false) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  const mix = (c) => Math.round(255 - (255 - c) * intensity).toString(16).padStart(2, "0");
+  const mix = (c) => {
+    const val = toBlack ? c * (1 - intensity) : 255 - (255 - c) * intensity;
+    return Math.round(val).toString(16).padStart(2, "0");
+  };
   return `#${mix(r)}${mix(g)}${mix(b)}`;
 }
 
@@ -38,7 +41,7 @@ function timeAgo(iso) {
 export default function DashboardScreen() {
   const router = useRouter();
   const { tasks, notifications, clearNotifications } = useTasks();
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const isTablet = useIsTablet();
@@ -53,6 +56,7 @@ export default function DashboardScreen() {
   const fabTranslate = useRef(new Animated.Value(0)).current;
   const fabScale = useRef(new Animated.Value(1)).current;
   const hasHiddenFab = useRef(false);
+  const cardScale = useRef(new Animated.Value(1)).current;
   const screenDims = useMemo(() => Dimensions.get("window"), []);
 
   const handleOpenNotifications = useCallback(() => {
@@ -521,12 +525,13 @@ export default function DashboardScreen() {
   const completionRate = weeklyTotal > 0 ? Math.round((weeklyCompleted / weeklyTotal) * 100) : 0;
 
   function StatCard({ icon, label, value, color, radii }) {
+    const isDark = mode === "dark";
     return (
       <PressableBounce
         style={[
           styles.statCard,
           {
-            backgroundColor: mixWithWhite(color),
+            backgroundColor: mixTint(color, isDark ? 0.2 : 0.12, isDark),
             borderTopLeftRadius: radii.tl,
             borderTopRightRadius: radii.tr,
             borderBottomLeftRadius: radii.bl,
@@ -535,12 +540,12 @@ export default function DashboardScreen() {
         ]}
       >
         <View style={styles.statContentRow}>
-          <View style={[styles.statIcon, { backgroundColor: withAlpha(color, 0.1) }]}>
-            <Ionicons name={icon} size={ms(20)} color={color} />
+          <View style={[styles.statIcon, { backgroundColor: withAlpha(color, isDark ? 0.35 : 0.1) }]}>
+            <Ionicons name={icon} size={ms(20)} color={isDark ? "#FFFFFF" : color} />
           </View>
           <View style={styles.statTextGroup}>
-            <Text style={[styles.statValue, { color }]}>{value}</Text>
-            <Text style={styles.statLabel}>{label}</Text>
+            <Text style={[styles.statValue, { color: isDark ? "#FFFFFF" : color }]}>{value}</Text>
+            <Text style={[styles.statLabel, { color: isDark ? "#FFFFFF" : colors.textSecondary }]}>{label}</Text>
           </View>
         </View>
       </PressableBounce>
@@ -597,24 +602,31 @@ export default function DashboardScreen() {
         </AnimatedSection>
 
         <AnimatedSection delay={300}>
-          <View style={styles.productivityCard}>
-            <View style={styles.productivityHeader}>
-              <Text style={styles.sectionTitle}>This Week</Text>
-              <View style={styles.rateRow}>
-                <Text style={styles.rateValue}>{completionRate}%</Text>
-                <Text style={styles.rateLabel}>completion rate</Text>
+          <Pressable
+            onHoverIn={() => Animated.spring(cardScale, { toValue: 1.02, friction: 6, tension: 200, useNativeDriver: true }).start()}
+            onHoverOut={() => Animated.spring(cardScale, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }).start()}
+            onPressIn={() => Animated.spring(cardScale, { toValue: 0.98, friction: 6, tension: 200, useNativeDriver: true }).start()}
+            onPressOut={() => Animated.spring(cardScale, { toValue: 1, friction: 4, tension: 200, useNativeDriver: true }).start()}
+          >
+            <Animated.View style={[styles.productivityCard, { transform: [{ scale: cardScale }] }]}>
+              <View style={styles.productivityHeader}>
+                <Text style={styles.sectionTitle}>This Week</Text>
+                <View style={styles.rateRow}>
+                  <Text style={styles.rateValue}>{completionRate}%</Text>
+                  <Text style={styles.rateLabel}>completion rate</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.barContainer}>
-              <View style={styles.barBg}>
-                <View style={[styles.barFill, { width: `${completionRate}%` }]} />
+              <View style={styles.barContainer}>
+                <View style={styles.barBg}>
+                  <View style={[styles.barFill, { width: `${completionRate}%` }]} />
+                </View>
+                <View style={styles.barLabels}>
+                  <Text style={styles.barLabelText}>{weeklyCompleted} completed</Text>
+                  <Text style={styles.barLabelText}>{weeklyTotal} total</Text>
+                </View>
               </View>
-              <View style={styles.barLabels}>
-                <Text style={styles.barLabelText}>{weeklyCompleted} completed</Text>
-                <Text style={styles.barLabelText}>{weeklyTotal} total</Text>
-              </View>
-            </View>
-          </View>
+            </Animated.View>
+          </Pressable>
         </AnimatedSection>
 
         <AnimatedSection delay={400}>
@@ -656,7 +668,7 @@ export default function DashboardScreen() {
       <Animated.View style={[styles.fab, { opacity: fabOpacity, transform: [{ translateY: fabTranslate }, { scale: fabScale }], bottom: ms(24) + insets.bottom }]}>
         <TouchableOpacity onPress={() => hideFab(() => setShowTaskSheet(true))} activeOpacity={0.85}>
           <View style={styles.fabInner}>
-            <Ionicons name="add" size={ms(26)} color={COLORS.white} />
+            <Ionicons name="add" size={ms(26)} color={colors.background} />
           </View>
         </TouchableOpacity>
       </Animated.View>

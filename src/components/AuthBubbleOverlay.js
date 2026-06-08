@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -40,6 +41,8 @@ function Bubble({ anim, size, color, xRange, yRange, sRange, style }) {
 }
 
 export default function AuthBubbleOverlay() {
+  const { mode } = useTheme();
+  const isDark = mode === "dark";
   const b1 = useBubbleAnim(9000);
   const b2 = useBubbleAnim(11000);
 
@@ -51,7 +54,7 @@ export default function AuthBubbleOverlay() {
       <Bubble
         anim={b1}
         size={s1}
-        color={"#8B5CF620"}
+        color={isDark ? "#A78BFA60" : "#8B5CF620"}
         xRange={[-width * 0.08, width * 0.12]}
         yRange={[height * 0.02, -height * 0.08]}
         sRange={[1, 1.15, 1]}
@@ -60,7 +63,7 @@ export default function AuthBubbleOverlay() {
       <Bubble
         anim={b2}
         size={s2}
-        color={"#EC489918"}
+        color={isDark ? "#F472B650" : "#EC489918"}
         xRange={[width * 0.1, -width * 0.06]}
         yRange={[-height * 0.04, height * 0.1]}
         sRange={[1, 1.12, 1]}

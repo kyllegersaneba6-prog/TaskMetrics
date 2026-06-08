@@ -1,24 +1,63 @@
-import { useMemo, useEffect, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform, Modal } from "react-native";
+import { useMemo, useEffect, useRef } from "react";
+import { View, Text, TouchableOpacity, Animated, StyleSheet, PanResponder } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import StatusBadge from "./StatusBadge";
-import { COLORS, CATEGORY_COLORS, withAlpha, FONT, moderateScale, fontScale } from "../utils/constants";
+import { CATEGORY_COLORS, withAlpha, FONT, moderateScale, fontScale } from "../utils/constants";
 import { useTheme } from "../context/ThemeContext";
 import { formatDate } from "../utils/dateHelpers";
 import { useAnimatedPress, useAnimatedCheckbox, useSlideIn } from "../animations/entrance";
+import { registerCard, closeAll, setOpenId, getOpenId } from "../utils/swipeStore";
 
 export default function TaskCard({ task, onPress, onDelete, onEdit, onToggleComplete, index = 0, highlighted = false }) {
-  const { colors } = useTheme();
+  const { colors, mode } = useTheme();
   const { scale: pressScale, onPressIn, onPressOut } = useAnimatedPress();
   const { scaleAnim, checkOpacity, animate: animateCheck } = useAnimatedCheckbox();
   const { opacity: slideOpacity, translateY } = useSlideIn(index * 80);
   const highlightScale = useRef(new Animated.Value(1)).current;
   const borderPulse = useRef(new Animated.Value(0)).current;
-  const [showMenu, setShowMenu] = useState(false);
-  const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
-  const menuBtnRef = useRef(null);
   const ms = moderateScale;
   const wasCompletedRef = useRef(task.status === "completed");
+  const OPEN_WIDTH = ms(180);
+  const swipeX = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const unregister = registerCard(task.id, () => {
+      Animated.spring(swipeX, { toValue: 0, friction: 8, tension: 80, useNativeDriver: true }).start();
+    });
+    return unregister;
+  }, [task.id, swipeX]);
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (_, gs) =>
+      Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy),
+    onPanResponderMove: (_, gs) => {
+      const currentlyOpen = getOpenId();
+      if (!currentlyOpen || currentlyOpen === task.id) {
+        const dx = currentlyOpen === task.id ? -OPEN_WIDTH + gs.dx : gs.dx;
+        swipeX.setValue(Math.max(-OPEN_WIDTH, Math.min(0, dx)));
+      } else {
+        closeAll();
+        swipeX.setValue(Math.max(-OPEN_WIDTH, Math.min(0, gs.dx)));
+      }
+    },
+    onPanResponderRelease: (_, gs) => {
+      const currentlyOpen = getOpenId();
+      const threshold = OPEN_WIDTH * 0.4;
+      if ((currentlyOpen !== task.id && gs.dx < -threshold) || (currentlyOpen === task.id && gs.dx > threshold)) {
+        const toValue = currentlyOpen === task.id ? 0 : -OPEN_WIDTH;
+        Animated.spring(swipeX, { toValue, friction: 8, tension: 80, useNativeDriver: true }).start();
+        if (currentlyOpen === task.id) setOpenId(null);
+        else setOpenId(task.id);
+      } else {
+        Animated.spring(swipeX, { toValue: currentlyOpen === task.id ? -OPEN_WIDTH : 0, friction: 8, tension: 80, useNativeDriver: true }).start();
+      }
+    },
+    onPanResponderTerminate: () => {
+      Animated.spring(swipeX, { toValue: 0, friction: 8, tension: 80, useNativeDriver: true }).start();
+      if (getOpenId() === task.id) setOpenId(null);
+    },
+  }), [OPEN_WIDTH, task.id]);
 
   useEffect(() => {
     if (highlighted) {
@@ -68,13 +107,8 @@ export default function TaskCard({ task, onPress, onDelete, onEdit, onToggleComp
   const styles = useMemo(() => StyleSheet.create({
     card: {
       backgroundColor: colors.surface,
-      borderRadius: ms(14),
       padding: ms(14),
       paddingLeft: ms(12),
-      marginHorizontal: ms(20),
-      marginVertical: ms(5),
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     leftAccent: {
       position: "absolute",
@@ -150,62 +184,32 @@ export default function TaskCard({ task, onPress, onDelete, onEdit, onToggleComp
       alignItems: "center",
       marginTop: ms(8),
     },
-    menuBtn: {
-      width: ms(32),
-      height: ms(32),
-      borderRadius: ms(8),
-      justifyContent: "center",
-      alignItems: "center",
-      marginLeft: ms(8),
-    },
-    menuOverlay: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      zIndex: 100,
-    },
-    menuModalOverlay: {
-      flex: 1,
-    },
-    menuModalArea: {
-      flex: 1,
-    },
-    menuDropdown: {
-      backgroundColor: colors.surface,
-      borderRadius: ms(12),
+    swipeContainer: {
+      overflow: "hidden",
+      borderRadius: ms(14),
       borderWidth: 1,
       borderColor: colors.border,
-      minWidth: ms(140),
-      paddingVertical: ms(4),
-      zIndex: 101,
-      ...Platform.select({
-        ios: {
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 12,
-        },
-        android: { elevation: 8 },
-      }),
+      marginHorizontal: ms(20),
+      marginVertical: ms(5),
     },
-    menuItem: {
+    actionsRow: {
+      position: "absolute",
+      right: 0,
+      top: 0,
+      bottom: 0,
       flexDirection: "row",
+      width: ms(180),
+    },
+    actionBtn: {
+      flex: 1,
+      justifyContent: "center",
       alignItems: "center",
-      gap: ms(10),
-      paddingHorizontal: ms(14),
-      paddingVertical: ms(11),
+      gap: ms(4),
     },
-    menuItemText: {
-      fontSize: fontScale(13),
-      fontFamily: FONT.medium,
-      color: colors.text,
-    },
-    menuDivider: {
-      height: 1,
-      backgroundColor: colors.border,
-      marginHorizontal: ms(10),
+    actionText: {
+      fontSize: fontScale(10),
+      fontFamily: FONT.semiBold,
+      color: "#FFF",
     },
     highlightBorder: {
       ...StyleSheet.absoluteFillObject,
@@ -227,99 +231,97 @@ export default function TaskCard({ task, onPress, onDelete, onEdit, onToggleComp
     <Animated.View style={{ opacity: slideOpacity, transform: [{ translateY }] }}>
       <Animated.View style={{ transform: [{ scale: pressScale }] }}>
         <Animated.View style={{ transform: [{ scale: highlightScale }] }}>
-        <TouchableOpacity
-          style={styles.card}
-          onPress={() => onToggleComplete?.(task.id, task.status)}
-          onPressIn={onPressIn}
-          onPressOut={onPressOut}
-          activeOpacity={1}
-        >
-          {highlighted && (
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.highlightBorder,
-                { borderColor: highlightBorderColor, opacity: borderPulse },
-              ]}
-            />
-          )}
-          <View style={[styles.leftAccent, { backgroundColor: catColor }]} />
-          <View style={styles.bodyRow}>
-            <TouchableOpacity
-              onPress={() => onToggleComplete?.(task.id, task.status)}
-              activeOpacity={0.7}
-            >
-              <Animated.View
-                style={[
-                  styles.checkboxTouch,
-                  {
-                    borderColor: catColor,
-                    backgroundColor: task.status === "completed" ? withAlpha(catColor, 0.15) : "transparent",
-                  },
-                  { transform: [{ scale: scaleAnim }] },
-                ]}
-              >
-                <Animated.View style={{ opacity: checkOpacity }}>
-                  <Ionicons name="checkmark" size={ms(13)} color={catColor} />
-                </Animated.View>
-              </Animated.View>
+        <View style={styles.swipeContainer}>
+          <View style={styles.actionsRow}>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: mode === "dark" ? "#3B82F6" : colors.primary }]} onPress={() => onPress?.(task)}>
+              <Ionicons name="eye-outline" size={ms(20)} color="#FFF" />
+              <Text style={styles.actionText}>View</Text>
             </TouchableOpacity>
-            <View style={styles.contentWrap}>
-              <View style={styles.topRow}>
-                <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
-                <Text style={styles.categoryLabel} numberOfLines={1}>{task.category}</Text>
-                <View style={styles.topSpacer} />
-                {task.deadline ? (
-                  <View style={styles.deadlineWrap}>
-                    <Ionicons name="calendar-outline" size={ms(11)} color={colors.textLight} style={styles.deadlineIcon} />
-                    <Text style={styles.deadlineText}>{formatDate(task.deadline)}</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={[styles.title, task.status === "completed" && styles.completedTitle]} numberOfLines={1}>
-                {task.title}
-              </Text>
-              {descTrimmed ? (
-                <Text style={styles.description} numberOfLines={1}>{descTrimmed}</Text>
-              ) : null}
-              <View style={styles.statusRow}>
-                <StatusBadge status={task.status} />
-              </View>
-            </View>
-            <TouchableOpacity ref={menuBtnRef} style={styles.menuBtn} onPress={() => {
-              menuBtnRef.current?.measureInWindow((x, y) => {
-                setMenuPos({ x, y });
-                setShowMenu(true);
-              });
-            }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="ellipsis-vertical" size={ms(15)} color={colors.textLight} />
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: mode === "dark" ? "#F59E0B" : colors.warning }]} onPress={() => onEdit?.(task)}>
+              <Ionicons name="create-outline" size={ms(20)} color="#FFF" />
+              <Text style={styles.actionText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: mode === "dark" ? "#EF4444" : colors.danger }]} onPress={() => onDelete?.(task)}>
+              <Ionicons name="trash-outline" size={ms(20)} color="#FFF" />
+              <Text style={styles.actionText}>Delete</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-        {showMenu && (
-          <Modal transparent animationType="none" visible={showMenu} onRequestClose={() => setShowMenu(false)}>
-            <TouchableOpacity style={styles.menuModalOverlay} activeOpacity={1} onPress={() => setShowMenu(false)}>
-              <View style={styles.menuModalArea}>
-                <View style={[styles.menuDropdown, { position: "absolute", left: menuPos.x - ms(120), top: menuPos.y + ms(4) }]}>
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setShowMenu(false); onPress?.(task); }}>
-                    <Ionicons name="eye-outline" size={ms(17)} color={colors.textSecondary} />
-                    <Text style={styles.menuItemText}>View</Text>
-                  </TouchableOpacity>
-                  <View style={styles.menuDivider} />
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setShowMenu(false); onEdit?.(task); }}>
-                    <Ionicons name="create-outline" size={ms(17)} color={colors.textSecondary} />
-                    <Text style={styles.menuItemText}>Edit</Text>
-                  </TouchableOpacity>
-                  <View style={styles.menuDivider} />
-                  <TouchableOpacity style={styles.menuItem} onPress={() => { setShowMenu(false); onDelete?.(task); }}>
-                    <Ionicons name="trash-outline" size={ms(17)} color={colors.danger} />
-                    <Text style={[styles.menuItemText, { color: colors.danger }]}>Delete</Text>
-                  </TouchableOpacity>
+          <Animated.View
+            style={{ transform: [{ translateX: swipeX }], backgroundColor: colors.surface }}
+            {...panResponder.panHandlers}
+          >
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => {
+                if (getOpenId() === task.id) {
+                  closeAll();
+                  return;
+                }
+                onToggleComplete?.(task.id, task.status);
+              }}
+              onPressIn={onPressIn}
+              onPressOut={onPressOut}
+              activeOpacity={1}
+            >
+              {highlighted && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.highlightBorder,
+                    { borderColor: highlightBorderColor, opacity: borderPulse },
+                  ]}
+                />
+              )}
+              <View style={[styles.leftAccent, { backgroundColor: catColor }]} />
+              <View style={styles.bodyRow}>
+                <TouchableOpacity
+              onPress={() => {
+                if (getOpenId() === task.id) closeAll();
+                else onToggleComplete?.(task.id, task.status);
+              }}
+                  activeOpacity={0.7}
+                >
+                  <Animated.View
+                    style={[
+                      styles.checkboxTouch,
+                      {
+                        borderColor: catColor,
+                        backgroundColor: task.status === "completed" ? withAlpha(catColor, 0.15) : "transparent",
+                      },
+                      { transform: [{ scale: scaleAnim }] },
+                    ]}
+                  >
+                    <Animated.View style={{ opacity: checkOpacity }}>
+                      <Ionicons name="checkmark" size={ms(13)} color={catColor} />
+                    </Animated.View>
+                  </Animated.View>
+                </TouchableOpacity>
+                <View style={styles.contentWrap}>
+                  <View style={styles.topRow}>
+                    <View style={[styles.categoryDot, { backgroundColor: catColor }]} />
+                    <Text style={styles.categoryLabel} numberOfLines={1}>{task.category}</Text>
+                    <View style={styles.topSpacer} />
+                    {task.deadline ? (
+                      <View style={styles.deadlineWrap}>
+                        <Ionicons name="calendar-outline" size={ms(11)} color={colors.textLight} style={styles.deadlineIcon} />
+                        <Text style={styles.deadlineText}>{formatDate(task.deadline)}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text style={[styles.title, task.status === "completed" && styles.completedTitle]} numberOfLines={1}>
+                    {task.title}
+                  </Text>
+                  {descTrimmed ? (
+                    <Text style={styles.description} numberOfLines={1}>{descTrimmed}</Text>
+                  ) : null}
+                  <View style={styles.statusRow}>
+                    <StatusBadge status={task.status} />
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
-          </Modal>
-        )}
+          </Animated.View>
+        </View>
         </Animated.View>
       </Animated.View>
     </Animated.View>

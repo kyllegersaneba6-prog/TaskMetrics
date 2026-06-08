@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react";
 import { Animated, Dimensions, StyleSheet, View } from "react-native";
+import { useTheme } from "../context/ThemeContext";
 
 const { width, height } = Dimensions.get("window");
 
@@ -40,6 +41,8 @@ function Bubble({ anim, size, color, xRange, yRange, sRange, style }) {
 }
 
 export default function TabBubbleOverlay() {
+  const { mode } = useTheme();
+  const isDark = mode === "dark";
   const b1 = useBubbleAnim(14000);
   const b2 = useBubbleAnim(11000);
   const b3 = useBubbleAnim(16000);
@@ -53,7 +56,7 @@ export default function TabBubbleOverlay() {
       <Bubble
         anim={b1}
         size={s1}
-        color={"#3B82F616"}
+        color={isDark ? "#60A5FA55" : "#3B82F616"}
         xRange={[-width * 0.1, width * 0.15]}
         yRange={[-height * 0.05, height * 0.1]}
         sRange={[1, 1.12, 1]}
@@ -62,7 +65,7 @@ export default function TabBubbleOverlay() {
       <Bubble
         anim={b2}
         size={s2}
-        color={"#8B5CF612"}
+        color={isDark ? "#A78BFA45" : "#8B5CF612"}
         xRange={[width * 0.12, -width * 0.08]}
         yRange={[height * 0.1, -height * 0.05]}
         sRange={[1, 1.15, 1]}
@@ -71,7 +74,7 @@ export default function TabBubbleOverlay() {
       <Bubble
         anim={b3}
         size={s3}
-        color={"#06B6D410"}
+        color={isDark ? "#22D3EE35" : "#06B6D410"}
         xRange={[-width * 0.04, width * 0.08]}
         yRange={[-height * 0.06, height * 0.06]}
         sRange={[1, 1.1, 1]}

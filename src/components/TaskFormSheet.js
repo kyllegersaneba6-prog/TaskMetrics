@@ -106,7 +106,7 @@ export default function TaskFormSheet({ existingTask, onSaved, onCancel }) {
       color: colors.textSecondary,
     },
     chipTextActive: {
-      color: COLORS.white,
+      color: colors.background,
     },
     datePicker: {
       flexDirection: "row",
@@ -140,7 +140,7 @@ export default function TaskFormSheet({ existingTask, onSaved, onCancel }) {
     saveBtnText: {
       fontSize: fs(15),
       fontFamily: FONT.semiBold,
-      color: COLORS.white,
+      color: colors.background,
     },
     toggleRow: {
       flexDirection: "row",
@@ -402,7 +402,7 @@ export default function TaskFormSheet({ existingTask, onSaved, onCancel }) {
 
         <View style={{ marginTop: ms(8), marginBottom: ms(4) }}>
           <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-            <Ionicons name="checkmark" size={ms(20)} color={COLORS.white} />
+            <Ionicons name="checkmark" size={ms(20)} color={colors.background} />
             <Text style={styles.saveBtnText}>{saving ? "Saving..." : isEdit ? "Update Task" : "Add Task"}</Text>
           </TouchableOpacity>
         </View>

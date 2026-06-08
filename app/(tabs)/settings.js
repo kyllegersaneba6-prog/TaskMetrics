@@ -174,7 +174,7 @@ export default function SettingsScreen() {
       marginHorizontal: ms(24),
       paddingVertical: ms(14),
       borderRadius: ms(12),
-      borderWidth: 1,
+      backgroundColor: colors.danger,
       marginBottom: ms(24),
     },
     logoutText: {
@@ -247,12 +247,12 @@ export default function SettingsScreen() {
 
       <AnimatedSection delay={400}>
         <TouchableOpacity
-          style={[styles.logoutBtn, { borderColor: withAlpha(colors.danger, 0.2), backgroundColor: withAlpha(colors.danger, 0.06) }, loggingOut && { opacity: 0.6 }]}
+          style={[styles.logoutBtn, loggingOut && { opacity: 0.6 }]}
           onPress={handleLogout}
           disabled={loggingOut}
         >
-          <Ionicons name="log-out-outline" size={ms(20)} color={colors.danger} />
-          <Text style={[styles.logoutText, { color: colors.danger }]}>{loggingOut ? "Signing out..." : "Sign Out"}</Text>
+          <Ionicons name="log-out-outline" size={ms(20)} color={colors.white} />
+          <Text style={[styles.logoutText, { color: colors.white }]}>{loggingOut ? "Signing out..." : "Sign Out"}</Text>
         </TouchableOpacity>
       </AnimatedSection>
 

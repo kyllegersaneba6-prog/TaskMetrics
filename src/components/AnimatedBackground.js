@@ -43,6 +43,7 @@ function Bubble({ anim, size, color, xRange, yRange, sRange, style }) {
 export default function AnimatedBackground({
   colors = ["#3B82F6", "#8B5CF6", "#06B6D4"],
   backgroundBubbles = true,
+  dark = false,
   children,
 }) {
   const b1 = useBubbleAnim(14000);
@@ -56,7 +57,7 @@ export default function AnimatedBackground({
   return (
     <View style={StyleSheet.absoluteFill}>
       <LinearGradient
-        colors={[colors[0] + "08", colors[1] + "08", colors[2] + "08"]}
+        colors={[colors[0] + (dark ? "25" : "08"), colors[1] + (dark ? "25" : "08"), colors[2] + (dark ? "25" : "08")]}
         style={StyleSheet.absoluteFill}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -66,7 +67,7 @@ export default function AnimatedBackground({
           <Bubble
             anim={b1}
             size={s1}
-            color={colors[0] + "18"}
+            color={colors[0] + (dark ? "55" : "18")}
             xRange={[-width * 0.12, width * 0.18]}
             yRange={[-height * 0.06, height * 0.12]}
             sRange={[1, 1.12, 1]}
@@ -75,7 +76,7 @@ export default function AnimatedBackground({
           <Bubble
             anim={b2}
             size={s2}
-            color={colors[1] + "14"}
+            color={colors[1] + (dark ? "45" : "14")}
             xRange={[width * 0.15, -width * 0.1]}
             yRange={[height * 0.12, -height * 0.06]}
             sRange={[1, 1.18, 1]}
@@ -84,7 +85,7 @@ export default function AnimatedBackground({
           <Bubble
             anim={b3}
             size={s3}
-            color={colors[2] + "10"}
+            color={colors[2] + (dark ? "35" : "10")}
             xRange={[-width * 0.05, width * 0.1]}
             yRange={[-height * 0.08, height * 0.08]}
             sRange={[1, 1.1, 1]}

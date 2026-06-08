@@ -17,6 +17,7 @@ import TaskDetailSheet from "../../../src/components/TaskDetailSheet";
 import { consumeHighlight } from "../../../src/utils/highlightRef";
 import { subscribe as subscribeTaskOpen, consumePendingTaskId } from "../../../src/utils/taskOpenRef";
 
+
 export default function TaskListScreen() {
   const { tasks, deleteTask, toggleComplete } = useTasks();
   const { colors } = useTheme();
@@ -442,7 +443,7 @@ export default function TaskListScreen() {
     helpStepNumText: {
       fontSize: fs(13),
       fontFamily: FONT.semiBold,
-      color: COLORS.white,
+      color: colors.background,
     },
     helpStepContent: {
       flex: 1,
@@ -469,7 +470,7 @@ export default function TaskListScreen() {
     helpDoneBtnText: {
       fontSize: fs(15),
       fontFamily: FONT.semiBold,
-      color: COLORS.white,
+      color: colors.background,
     },
   }), [colors]);
 
@@ -584,6 +585,7 @@ export default function TaskListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         onScrollToIndexFailed={() => {}}
+
         contentContainerStyle={filteredTasks.length === 0 ? styles.emptyContainer : styles.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -647,7 +649,7 @@ export default function TaskListScreen() {
       <Animated.View style={[styles.fab, { opacity: fabOpacity, transform: [{ translateY: fabTranslate }, { scale: fabScale }], bottom: ms(24) + insets.bottom }]}>
         <TouchableOpacity onPress={() => hideFab(() => setShowTaskSheet(true))} activeOpacity={0.85}>
           <View style={styles.fabInner}>
-            <Ionicons name="add" size={ms(26)} color={COLORS.white} />
+            <Ionicons name="add" size={ms(26)} color={colors.background} />
           </View>
         </TouchableOpacity>
       </Animated.View>
